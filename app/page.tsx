@@ -1033,18 +1033,18 @@ export default function AdminadorNotas() {
           <>
             <div className="overlay-modal" onClick={() => setMostrarFormularioSubcategoria(false)}></div>
             <div className="modal-categoria">
-              <form onSubmit={(e) => { e.preventDefault(); crearSubcategoria(); }}>
-                <div className="encabezado-modal">
-                  <h2>📁 Nueva Subcategoría</h2>
-                  <button 
-                    type="button"
-                    className="boton-cerrar-modal"
-                    onClick={() => setMostrarFormularioSubcategoria(false)}
-                  >
-                    ×
-                  </button>
-                </div>
-                
+              <div className="encabezado-modal">
+                <h2>📁 Nueva Subcategoría</h2>
+                <button 
+                  type="button"
+                  className="boton-cerrar-modal"
+                  onClick={() => setMostrarFormularioSubcategoria(false)}
+                >
+                  ×
+                </button>
+              </div>
+              
+              <form onSubmit={(e) => { e.preventDefault(); crearSubcategoria(); }} className="formulario-modal">
                 <div className="campo-modal">
                   <label className="label-modal">Nombre de la subcategoría</label>
                   <input
@@ -1094,6 +1094,7 @@ export default function AdminadorNotas() {
               className={`item-categoria ${categoriaVistaActual === categoria.id ? 'seleccionada' : ''}`}
               onClick={() => {
                 setCategoriaVistaActual(categoria.id);
+                setSubcategoriaVistaActual(null);
                 setNotaSeleccionada(null);
                 setPaginaWebSeleccionada(null);
                 setCuentaSeleccionada(null);
@@ -1186,6 +1187,7 @@ export default function AdminadorNotas() {
           className={`item-categoria ${categoriaVistaActual === 'paginas' ? 'seleccionada' : ''}`}
           onClick={() => {
             setCategoriaVistaActual('paginas');
+            setSubcategoriaVistaActual(null);
             setNotaSeleccionada(null);
             setPaginaWebSeleccionada(null);
             setCuentaSeleccionada(null);
@@ -1217,6 +1219,7 @@ export default function AdminadorNotas() {
           className={`item-categoria ${categoriaVistaActual === 'cuentas' ? 'seleccionada' : ''}`}
           onClick={() => {
             setCategoriaVistaActual('cuentas');
+            setSubcategoriaVistaActual(null);
             setNotaSeleccionada(null);
             setPaginaWebSeleccionada(null);
             setCuentaSeleccionada(null);
