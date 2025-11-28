@@ -142,6 +142,22 @@ export default function AdminadorNotas() {
   const [mostrarModalConfirmacion, setMostrarModalConfirmacion] = useState(false);
   const [categoriaAEliminar, setCategoriaAEliminar] = useState<Categoria | null>(null);
   
+  // Estados para modal de confirmación de nota
+  const [mostrarModalConfirmacionNota, setMostrarModalConfirmacionNota] = useState(false);
+  const [notaAEliminar, setNotaAEliminar] = useState<Nota | null>(null);
+  
+  // Estados para modal de confirmación de subcategoría
+  const [mostrarModalConfirmacionSubcategoria, setMostrarModalConfirmacionSubcategoria] = useState(false);
+  const [subcategoriaAEliminar, setSubcategoriaAEliminar] = useState<Subcategoria | null>(null);
+  
+  // Estados para menú contextual de subcategoría
+  const [menuContextualSubcategoria, setMenuContextualSubcategoria] = useState<{
+    mostrar: boolean;
+    x: number;
+    y: number;
+    subcategoria: Subcategoria | null;
+  }>({ mostrar: false, x: 0, y: 0, subcategoria: null });
+  
   // Estados para drag and drop
   const [notaArrastrada, setNotaArrastrada] = useState<string | null>(null);
   const [subcategoriaDestino, setSubcategoriaDestino] = useState<string | null>(null);
@@ -164,6 +180,20 @@ export default function AdminadorNotas() {
 
   const [indiceAnimacion, setIndiceAnimacion] = useState(0);
   const [posicionIcono, setPosicionIcono] = useState({ top: '20%', left: '20%' });
+
+  // Cerrar menú contextual al hacer clic fuera
+  useEffect(() => {
+    const handleClick = () => {
+      if (menuContextualSubcategoria.mostrar) {
+        setMenuContextualSubcategoria({ mostrar: false, x: 0, y: 0, subcategoria: null });
+      }
+    };
+    
+    if (menuContextualSubcategoria.mostrar) {
+      document.addEventListener('click', handleClick);
+      return () => document.removeEventListener('click', handleClick);
+    }
+  }, [menuContextualSubcategoria.mostrar]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -641,16 +671,32 @@ export default function AdminadorNotas() {
     setHayChangesCuenta(false);
   };
 
+  const iniciarEliminacionNota = (nota: Nota) => {
+    setNotaAEliminar(nota);
+    setMostrarModalConfirmacionNota(true);
+  };
+
+  const confirmarEliminacionNota = async () => {
+    if (!usuario || !notaAEliminar) return;
+    
+    const resultado = await eliminarNota(usuario.uid, notaAEliminar.id);
+    if (resultado.success) {
+      const notasActualizadas = notas.filter((n) => n.id !== notaAEliminar.id);
+      setNotas(notasActualizadas);
+      if (notaSeleccionada?.id === notaAEliminar.id) {
+        setNotaSeleccionada(null);
+      }
+    }
+    setMostrarModalConfirmacionNota(false);
+    setNotaAEliminar(null);
+  };
+
   const eliminarNotaLocal = async (id: string) => {
     if (!usuario) return;
     
-    const resultado = await eliminarNota(usuario.uid, id);
-    if (resultado.success) {
-      const notasActualizadas = notas.filter((n) => n.id !== id);
-      setNotas(notasActualizadas);
-      if (notaSeleccionada?.id === id) {
-        setNotaSeleccionada(notasActualizadas[0] || null);
-      }
+    const nota = notas.find(n => n.id === id);
+    if (nota) {
+      iniciarEliminacionNota(nota);
     }
   };
 
@@ -812,15 +858,46 @@ export default function AdminadorNotas() {
     }
   };
 
+  const iniciarEliminacionSubcategoria = (subcategoria: Subcategoria) => {
+    setSubcategoriaAEliminar(subcategoria);
+    setMostrarModalConfirmacionSubcategoria(true);
+    setMenuContextualSubcategoria({ mostrar: false, x: 0, y: 0, subcategoria: null });
+  };
+
+  const confirmarEliminacionSubcategoria = async () => {
+    if (!usuario || !subcategoriaAEliminar) return;
+    
+    const resultado = await eliminarSubcategoria(usuario.uid, subcategoriaAEliminar.id);
+    if (resultado.success) {
+      setSubcategorias(subcategorias.filter((s) => s.id !== subcategoriaAEliminar.id));
+      const notasSinSubcategoria = notas.filter((n) => n.subcategoriaId !== subcategoriaAEliminar.id);
+      setNotas(notasSinSubcategoria);
+      if (subcategoriaVistaActual === subcategoriaAEliminar.id) {
+        setSubcategoriaVistaActual(null);
+      }
+    }
+    setMostrarModalConfirmacionSubcategoria(false);
+    setSubcategoriaAEliminar(null);
+  };
+
   const eliminarSubcategoriaLocal = async (id: string) => {
     if (!usuario) return;
     
-    const resultado = await eliminarSubcategoria(usuario.uid, id);
-    if (resultado.success) {
-      setSubcategorias(subcategorias.filter((s) => s.id !== id));
-      const notasSinSubcategoria = notas.filter((n) => n.subcategoriaId !== id);
-      setNotas(notasSinSubcategoria);
+    const subcategoria = subcategorias.find(s => s.id === id);
+    if (subcategoria) {
+      iniciarEliminacionSubcategoria(subcategoria);
     }
+  };
+
+  const handleContextMenuSubcategoria = (e: React.MouseEvent, subcategoria: Subcategoria) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMenuContextualSubcategoria({
+      mostrar: true,
+      x: e.clientX,
+      y: e.clientY,
+      subcategoria
+    });
   };
 
   const formatearFecha = (fecha: Date | string | undefined) => {
@@ -1518,6 +1595,115 @@ export default function AdminadorNotas() {
           </div>
         )}
 
+        {/* Modal de confirmación para eliminar nota */}
+        {mostrarModalConfirmacionNota && notaAEliminar && (
+          <div className="overlay-modal" onClick={() => setMostrarModalConfirmacionNota(false)}>
+            <div className="modal-confirmacion" onClick={(e) => e.stopPropagation()}>
+              <div className="encabezado-modal">
+                <h2>⚠️ Confirmar eliminación</h2>
+                <button 
+                  className="boton-cerrar-modal"
+                  onClick={() => setMostrarModalConfirmacionNota(false)}
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="contenido-modal-confirmacion">
+                <div className="mensaje-advertencia">
+                  <p className="texto-principal">
+                    ¿Estás seguro de que deseas eliminar la nota <strong>"{notaAEliminar.titulo}"</strong>?
+                  </p>
+                  <p className="texto-advertencia">
+                    Esta acción no se puede deshacer.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="pie-modal">
+                <button 
+                  className="boton-modal-secundario"
+                  onClick={() => setMostrarModalConfirmacionNota(false)}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  className="boton-modal-peligroso"
+                  onClick={confirmarEliminacionNota}
+                >
+                  Eliminar nota
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de confirmación para eliminar subcategoría */}
+        {mostrarModalConfirmacionSubcategoria && subcategoriaAEliminar && (
+          <div className="overlay-modal" onClick={() => setMostrarModalConfirmacionSubcategoria(false)}>
+            <div className="modal-confirmacion" onClick={(e) => e.stopPropagation()}>
+              <div className="encabezado-modal">
+                <h2>⚠️ Confirmar eliminación</h2>
+                <button 
+                  className="boton-cerrar-modal"
+                  onClick={() => setMostrarModalConfirmacionSubcategoria(false)}
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="contenido-modal-confirmacion">
+                <div className="mensaje-advertencia">
+                  <p className="texto-principal">
+                    ¿Estás seguro de que deseas eliminar la subcategoría <strong>"{subcategoriaAEliminar.nombre}"</strong>?
+                  </p>
+                  <p className="texto-secundario">
+                    Esta acción eliminará la subcategoría y todas las notas asociadas ({notasPorSubcategoria(subcategoriaAEliminar.id).length} nota{notasPorSubcategoria(subcategoriaAEliminar.id).length !== 1 ? 's' : ''}).
+                  </p>
+                  <p className="texto-advertencia">
+                    Esta acción no se puede deshacer.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="pie-modal">
+                <button 
+                  className="boton-modal-secundario"
+                  onClick={() => setMostrarModalConfirmacionSubcategoria(false)}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  className="boton-modal-peligroso"
+                  onClick={confirmarEliminacionSubcategoria}
+                >
+                  Eliminar subcategoría
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Menú contextual para subcategorías */}
+        {menuContextualSubcategoria.mostrar && menuContextualSubcategoria.subcategoria && (
+          <div 
+            className="menu-contextual"
+            style={{
+              position: 'fixed',
+              top: `${menuContextualSubcategoria.y}px`,
+              left: `${menuContextualSubcategoria.x}px`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="opcion-menu-contextual peligroso"
+              onClick={() => iniciarEliminacionSubcategoria(menuContextualSubcategoria.subcategoria!)}
+            >
+              🗑️ Eliminar subcategoría
+            </button>
+          </div>
+        )}
+
       </aside>
 
       <main className="area-principal">
@@ -1610,6 +1796,7 @@ export default function AdminadorNotas() {
                       key={subcategoria.id}
                       className="card-subcategoria"
                       onClick={() => setSubcategoriaVistaActual(subcategoria.id)}
+                      onContextMenu={(e) => handleContextMenuSubcategoria(e, subcategoria)}
                       onDragOver={handleDragOver}
                       onDragEnter={(e) => handleDragEnter(e, subcategoria.id)}
                       onDragLeave={handleDragLeave}
