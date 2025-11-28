@@ -435,7 +435,7 @@ export default function AdminadorNotas() {
       titulo: tituloEditable,
       contenido: contenidoEditable,
       categoriaId: categoriaEditable,
-      subcategoriaId: subcategoriaEditable || undefined,
+      subcategoriaId: subcategoriaEditable && subcategoriaEditable.trim() !== '' ? subcategoriaEditable : undefined,
       fechaCreacion: new Date().toISOString(),
     };
     
@@ -459,7 +459,7 @@ export default function AdminadorNotas() {
       titulo: tituloEditable,
       contenido: contenidoEditable,
       categoriaId: categoriaEditable,
-      subcategoriaId: subcategoriaEditable || undefined
+      subcategoriaId: subcategoriaEditable && subcategoriaEditable.trim() !== '' ? subcategoriaEditable : undefined
     };
     
     const resultado = await guardarNota(usuario.uid, notaActualizada);
