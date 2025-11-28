@@ -637,7 +637,11 @@ export default function AdminadorNotas() {
     setCuentaSeleccionada(null);
     setTituloEditable('');
     setContenidoEditable('');
-    setCategoriaEditable(categorias[0]?.id || '');
+    // Si hay una categoría vista actual y no es 'paginas' ni 'cuentas', usar esa categoría
+    const categoriaInicial = (categoriaVistaActual && categoriaVistaActual !== 'paginas' && categoriaVistaActual !== 'cuentas') 
+      ? categoriaVistaActual 
+      : categorias[0]?.id || '';
+    setCategoriaEditable(categoriaInicial);
     setTituloOriginal('');
     setContenidoOriginal('');
     setCategoriaOriginal('');
