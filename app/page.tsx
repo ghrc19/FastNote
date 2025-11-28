@@ -420,6 +420,12 @@ export default function AdminadorNotas() {
   const crearNota = async () => {
     if (!usuario || !tituloEditable.trim()) return;
     
+    // Validar que hay una categoría seleccionada
+    if (!categoriaEditable) {
+      alert('Por favor, selecciona una categoría para la nota');
+      return;
+    }
+    
     const nuevaNota: Nota = {
       id: Date.now().toString(),
       titulo: tituloEditable,
@@ -700,6 +706,12 @@ export default function AdminadorNotas() {
   const claseContenedor = modoNoche ? 'contenedor-noche' : 'contenedor-dia';
 
   const iniciarCreacionNota = () => {
+    // Validar que existan categorías antes de crear una nota
+    if (categorias.length === 0) {
+      alert('Primero debes crear al menos una categoría');
+      return;
+    }
+    
     setCreandoNota(true);
     setCreandoPagina(false);
     setCreandoCuenta(false);
