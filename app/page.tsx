@@ -141,6 +141,10 @@ export default function AdminadorNotas() {
   // Estados para modal de confirmación de categoría
   const [mostrarModalConfirmacion, setMostrarModalConfirmacion] = useState(false);
   const [categoriaAEliminar, setCategoriaAEliminar] = useState<Categoria | null>(null);
+  
+  // Estados para drag and drop
+  const [notaArrastrada, setNotaArrastrada] = useState<string | null>(null);
+  const [subcategoriaDestino, setSubcategoriaDestino] = useState<string | null>(null);
 
   const paletaColoresCompleta = [
     '#E53935', '#D32F2F', '#C62828', '#B71C1C',
@@ -223,6 +227,19 @@ export default function AdminadorNotas() {
     }, 2500);
     return () => clearInterval(intervalo);
   }, []);
+
+  // Cargar el modo oscuro desde localStorage al iniciar
+  useEffect(() => {
+    const modoGuardado = localStorage.getItem('modoNoche');
+    if (modoGuardado !== null) {
+      setModoNoche(modoGuardado === 'true');
+    }
+  }, []);
+
+  // Guardar el modo oscuro en localStorage cuando cambie
+  useEffect(() => {
+    localStorage.setItem('modoNoche', modoNoche.toString());
+  }, [modoNoche]);
 
   const elementosAnimacion = [
     { tipo: 'nota', icono: '📄', nombre: 'Notas' },
@@ -430,37 +447,66 @@ export default function AdminadorNotas() {
       return;
     }
     
-    const nuevaNota: Nota = {
+    const subcategoriaFinal = subcategoriaEditable && subcategoriaEditable.trim() !== '' ? subcategoriaEditable : null;
+    
+    console.log('Creando nota:', {
+      categoriaEditable,
+      subcategoriaEditable,
+      subcategoriaFinal,
+      titulo: tituloEditable
+    });
+    
+    const nuevaNota: any = {
       id: Date.now().toString(),
       titulo: tituloEditable,
       contenido: contenidoEditable,
       categoriaId: categoriaEditable,
-      subcategoriaId: subcategoriaEditable && subcategoriaEditable.trim() !== '' ? subcategoriaEditable : undefined,
       fechaCreacion: new Date().toISOString(),
     };
     
+    // Solo agregar subcategoriaId si tiene un valor válido
+    if (subcategoriaFinal) {
+      nuevaNota.subcategoriaId = subcategoriaFinal;
+    }
+    
+    console.log('Nota a guardar:', nuevaNota);
+    
     const resultado = await guardarNota(usuario.uid, nuevaNota);
+    console.log('Resultado de guardar nota:', resultado);
+    
     if (resultado.success) {
       const notaConId = { ...nuevaNota, id: resultado.id || nuevaNota.id };
+      console.log('Nota guardada exitosamente:', notaConId);
       setNotas([...notas, notaConId]);
       setCreandoNota(false);
-      setNotaSeleccionada(notaConId);
+      // No seleccionar la nota, mantener la vista actual de categoría/subcategoría
       setTituloEditable('');
       setContenidoEditable('');
+      setSubcategoriaEditable('');
       setHayChanges(false);
+    } else {
+      console.error('Error al guardar nota:', resultado);
+      alert(`Error al guardar la nota: ${resultado.error || 'Error desconocido'}`);
     }
   };
 
   const guardarEdicionNota = async () => {
     if (!usuario || !notaSeleccionada || !hayChanges) return;
     
-    const notaActualizada = {
+    const notaActualizada: any = {
       ...notaSeleccionada,
       titulo: tituloEditable,
       contenido: contenidoEditable,
       categoriaId: categoriaEditable,
-      subcategoriaId: subcategoriaEditable && subcategoriaEditable.trim() !== '' ? subcategoriaEditable : undefined
     };
+    
+    // Solo agregar subcategoriaId si tiene un valor válido
+    if (subcategoriaEditable && subcategoriaEditable.trim() !== '') {
+      notaActualizada.subcategoriaId = subcategoriaEditable;
+    } else {
+      // Eliminar la propiedad si existe
+      delete notaActualizada.subcategoriaId;
+    }
     
     const resultado = await guardarNota(usuario.uid, notaActualizada);
     if (resultado.success) {
@@ -667,6 +713,85 @@ export default function AdminadorNotas() {
     return subcategorias.filter((s) => s.categoriaId === categoriaId);
   };
 
+  // Funciones para drag and drop
+  const handleDragStart = (e: React.DragEvent, notaId: string) => {
+    setNotaArrastrada(notaId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.currentTarget.classList.add('arrastrando');
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    setNotaArrastrada(null);
+    e.currentTarget.classList.remove('arrastrando');
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDragEnter = (e: React.DragEvent, destino: string) => {
+    e.preventDefault();
+    setSubcategoriaDestino(destino);
+    e.currentTarget.classList.add('drag-over');
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    setSubcategoriaDestino(null);
+    e.currentTarget.classList.remove('drag-over');
+  };
+
+  const handleDropEnSubcategoria = async (e: React.DragEvent, subcategoriaId: string) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    
+    if (!notaArrastrada || !usuario) return;
+    
+    const nota = notas.find(n => n.id === notaArrastrada);
+    if (!nota) return;
+    
+    // Actualizar la nota con la nueva subcategoría
+    const notaActualizada = {
+      ...nota,
+      subcategoriaId: subcategoriaId
+    };
+    
+    const resultado = await guardarNota(usuario.uid, notaActualizada);
+    if (resultado.success) {
+      setNotas(notas.map(n => n.id === notaArrastrada ? notaActualizada : n));
+      console.log('Nota movida a subcategoría:', subcategoriaId);
+    }
+    
+    setNotaArrastrada(null);
+    setSubcategoriaDestino(null);
+  };
+
+  const handleDropEnCategoria = async (e: React.DragEvent, categoriaId: string) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    
+    if (!notaArrastrada || !usuario) return;
+    
+    const nota = notas.find(n => n.id === notaArrastrada);
+    if (!nota) return;
+    
+    // Actualizar la nota quitando la subcategoría
+    const notaActualizada: any = {
+      ...nota,
+      categoriaId: categoriaId
+    };
+    delete notaActualizada.subcategoriaId;
+    
+    const resultado = await guardarNota(usuario.uid, notaActualizada);
+    if (resultado.success) {
+      setNotas(notas.map(n => n.id === notaArrastrada ? notaActualizada : n));
+      console.log('Nota movida a categoría principal:', categoriaId);
+    }
+    
+    setNotaArrastrada(null);
+    setSubcategoriaDestino(null);
+  };
+
   const crearSubcategoria = async () => {
     if (!usuario || !nombreSubcategoria.trim() || !categoriaVistaActual) return;
     
@@ -730,9 +855,19 @@ export default function AdminadorNotas() {
     const categoriaInicial = (categoriaVistaActual && categoriaVistaActual !== 'paginas' && categoriaVistaActual !== 'cuentas') 
       ? categoriaVistaActual 
       : categorias[0]?.id || '';
+    
+    const subcategoriaInicial = subcategoriaVistaActual || '';
+    
+    console.log('Iniciando creación de nota:', {
+      categoriaVistaActual,
+      subcategoriaVistaActual,
+      categoriaInicial,
+      subcategoriaInicial
+    });
+    
     setCategoriaEditable(categoriaInicial);
     // Solo preseleccionar subcategoría si estamos viendo una subcategoría específica
-    setSubcategoriaEditable(subcategoriaVistaActual || '');
+    setSubcategoriaEditable(subcategoriaInicial);
     setTituloOriginal('');
     setContenidoOriginal('');
     setCategoriaOriginal('');
@@ -1475,6 +1610,10 @@ export default function AdminadorNotas() {
                       key={subcategoria.id}
                       className="card-subcategoria"
                       onClick={() => setSubcategoriaVistaActual(subcategoria.id)}
+                      onDragOver={handleDragOver}
+                      onDragEnter={(e) => handleDragEnter(e, subcategoria.id)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDropEnSubcategoria(e, subcategoria.id)}
                     >
                       <div className="icono-carpeta" style={{ color: subcategoria.color }}>📁</div>
                       <h4>{subcategoria.nombre}</h4>
@@ -1488,6 +1627,9 @@ export default function AdminadorNotas() {
                       <div
                         key={nota.id}
                         className="card-nota"
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, nota.id)}
+                        onDragEnd={handleDragEnd}
                         onClick={() => {
                           setNotaSeleccionada(nota);
                           setPaginaWebSeleccionada(null);
@@ -1522,7 +1664,19 @@ export default function AdminadorNotas() {
                   setSubcategoriaVistaActual(null);
                 }}>🏠 Inicio</span>
                 <span className="breadcrumb-separator">›</span>
-                <span className="breadcrumb-item" onClick={() => setSubcategoriaVistaActual(null)}>
+                <span 
+                  className="breadcrumb-item breadcrumb-drop-zone" 
+                  onClick={() => setSubcategoriaVistaActual(null)}
+                  onDragOver={handleDragOver}
+                  onDragEnter={(e) => handleDragEnter(e, 'categoria-principal')}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => {
+                    const subcategoria = subcategorias.find(s => s.id === subcategoriaVistaActual);
+                    if (subcategoria) {
+                      handleDropEnCategoria(e, subcategoria.categoriaId);
+                    }
+                  }}
+                >
                   {categorias.find(c => c.id === categoriaVistaActual)?.nombre || 'Categoría'}
                 </span>
                 <span className="breadcrumb-separator">›</span>
@@ -1537,6 +1691,9 @@ export default function AdminadorNotas() {
                   <div
                     key={nota.id}
                     className="card-nota"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, nota.id)}
+                    onDragEnd={handleDragEnd}
                     onClick={() => {
                       setNotaSeleccionada(nota);
                       setPaginaWebSeleccionada(null);

@@ -45,6 +45,9 @@ export const cerrarSesionUsuario = async () => {
 
 export const guardarNota = async (userId: string, nota: any) => {
   try {
+    console.log('guardarNota - userId:', userId);
+    console.log('guardarNota - nota:', nota);
+    
     const notaRef = nota.id 
       ? ref(database, `usuarios/${userId}/notas/${nota.id}`)
       : push(ref(database, `usuarios/${userId}/notas`));
@@ -55,9 +58,14 @@ export const guardarNota = async (userId: string, nota: any) => {
       fechaCreacion: nota.fechaCreacion || new Date().toISOString()
     };
     
+    console.log('guardarNota - notaData final:', notaData);
+    console.log('guardarNota - ref path:', notaRef.toString());
+    
     await set(notaRef, notaData);
+    console.log('guardarNota - Guardado exitoso');
     return { success: true, id: notaData.id };
   } catch (error: any) {
+    console.error('guardarNota - Error:', error);
     return { success: false, error: error.message };
   }
 };
