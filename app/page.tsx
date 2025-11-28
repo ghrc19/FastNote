@@ -20,6 +20,9 @@ import {
   guardarCategoria,
   obtenerCategorias,
   eliminarCategoria,
+  guardarSubcategoria,
+  obtenerSubcategorias,
+  eliminarSubcategoria,
   eliminarTodasLasNotas as eliminarTodasLasNotasFirebase
 } from '@/lib/firebaseService';
 import './styles.css';
@@ -29,6 +32,7 @@ interface Nota {
   titulo: string;
   contenido: string;
   categoriaId: string;
+  subcategoriaId?: string;
   fechaCreacion: Date;
 }
 
@@ -54,6 +58,13 @@ interface Categoria {
   color: string;
 }
 
+interface Subcategoria {
+  id: string;
+  nombre: string;
+  categoriaId: string;
+  color: string;
+}
+
 export default function AdminadorNotas() {
   const [usuario, setUsuario] = useState<User | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -69,6 +80,7 @@ export default function AdminadorNotas() {
   const [paginasWeb, setPaginasWeb] = useState<PaginaWeb[]>([]);
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [subcategorias, setSubcategorias] = useState<Subcategoria[]>([]);
 
   const [notaSeleccionada, setNotaSeleccionada] = useState<Nota | null>(null);
   const [paginaWebSeleccionada, setPaginaWebSeleccionada] = useState<PaginaWeb | null>(null);
@@ -114,6 +126,13 @@ export default function AdminadorNotas() {
   const [notificacionCopiar, setNotificacionCopiar] = useState<string | null>(null);
   const [mostrarContraseña, setMostrarContraseña] = useState(false);
   const [categoriaVistaActual, setCategoriaVistaActual] = useState<string | null>(null);
+  const [subcategoriaVistaActual, setSubcategoriaVistaActual] = useState<string | null>(null);
+  
+  // Estados para subcategorías
+  const [mostrarFormularioSubcategoria, setMostrarFormularioSubcategoria] = useState(false);
+  const [nombreSubcategoria, setNombreSubcategoria] = useState('');
+  const [colorSubcategoria, setColorSubcategoria] = useState('#667eea');
+  const [subcategoriaEditable, setSubcategoriaEditable] = useState('');
   
   // Agregar estado para modal de configuración
   const [mostrarModalConfiguracion, setMostrarModalConfiguracion] = useState(false);
@@ -334,6 +353,17 @@ export default function AdminadorNotas() {
     setHayChangesCuenta(cambios);
   }, [nombreCuentaEditable, usuarioCuentaEditable, contraseñaCuentaEditable, nombreCuentaOriginal, usuarioCuentaOriginal, contraseñaCuentaOriginal, creandoCuenta]);
 
+  // Cargar subcategorías cuando el usuario está autenticado
+  useEffect(() => {
+    if (usuario) {
+      const cargarSubcategorias = async () => {
+        const subcategoriasObtenidas = await obtenerSubcategorias(usuario.uid);
+        setSubcategorias(subcategoriasObtenidas);
+      };
+      cargarSubcategorias();
+    }
+  }, [usuario]);
+
   const crearCategoria = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!usuario || !nombreCategoria.trim()) return;
@@ -395,6 +425,7 @@ export default function AdminadorNotas() {
       titulo: tituloEditable,
       contenido: contenidoEditable,
       categoriaId: categoriaEditable,
+      subcategoriaId: subcategoriaEditable || undefined,
       fechaCreacion: new Date().toISOString(),
     };
     
@@ -417,7 +448,8 @@ export default function AdminadorNotas() {
       ...notaSeleccionada,
       titulo: tituloEditable,
       contenido: contenidoEditable,
-      categoriaId: categoriaEditable
+      categoriaId: categoriaEditable,
+      subcategoriaId: subcategoriaEditable || undefined
     };
     
     const resultado = await guardarNota(usuario.uid, notaActualizada);
@@ -615,6 +647,45 @@ export default function AdminadorNotas() {
     return notas.filter((n) => n.categoriaId === categoriaId);
   };
 
+  const notasPorSubcategoria = (subcategoriaId: string) => {
+    return notas.filter((n) => n.subcategoriaId === subcategoriaId);
+  };
+
+  const subcategoriasPorCategoria = (categoriaId: string) => {
+    return subcategorias.filter((s) => s.categoriaId === categoriaId);
+  };
+
+  const crearSubcategoria = async () => {
+    if (!usuario || !nombreSubcategoria.trim() || !categoriaVistaActual) return;
+    
+    const nuevaSubcategoria: Subcategoria = {
+      id: Date.now().toString(),
+      nombre: nombreSubcategoria,
+      categoriaId: categoriaVistaActual,
+      color: colorSubcategoria
+    };
+    
+    const resultado = await guardarSubcategoria(usuario.uid, nuevaSubcategoria);
+    if (resultado.success) {
+      const subcategoriaConId = { ...nuevaSubcategoria, id: resultado.id || nuevaSubcategoria.id };
+      setSubcategorias([...subcategorias, subcategoriaConId]);
+      setMostrarFormularioSubcategoria(false);
+      setNombreSubcategoria('');
+      setColorSubcategoria('#667eea');
+    }
+  };
+
+  const eliminarSubcategoriaLocal = async (id: string) => {
+    if (!usuario) return;
+    
+    const resultado = await eliminarSubcategoria(usuario.uid, id);
+    if (resultado.success) {
+      setSubcategorias(subcategorias.filter((s) => s.id !== id));
+      const notasSinSubcategoria = notas.filter((n) => n.subcategoriaId !== id);
+      setNotas(notasSinSubcategoria);
+    }
+  };
+
   const formatearFecha = (fecha: Date | string | undefined) => {
     if (!fecha) return 'Sin fecha';
     const fechaObj = typeof fecha === 'string' ? new Date(fecha) : fecha;
@@ -642,6 +713,7 @@ export default function AdminadorNotas() {
       ? categoriaVistaActual 
       : categorias[0]?.id || '';
     setCategoriaEditable(categoriaInicial);
+    setSubcategoriaEditable(subcategoriaVistaActual || '');
     setTituloOriginal('');
     setContenidoOriginal('');
     setCategoriaOriginal('');
@@ -956,6 +1028,65 @@ export default function AdminadorNotas() {
           </>
         )}
 
+        {/* Modal para crear Subcategoría */}
+        {mostrarFormularioSubcategoria && (
+          <>
+            <div className="overlay-modal" onClick={() => setMostrarFormularioSubcategoria(false)}></div>
+            <div className="modal-categoria">
+              <form onSubmit={(e) => { e.preventDefault(); crearSubcategoria(); }}>
+                <div className="encabezado-modal">
+                  <h2>📁 Nueva Subcategoría</h2>
+                  <button 
+                    type="button"
+                    className="boton-cerrar-modal"
+                    onClick={() => setMostrarFormularioSubcategoria(false)}
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                <div className="campo-modal">
+                  <label className="label-modal">Nombre de la subcategoría</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: Proyectos, Reuniones..."
+                    value={nombreSubcategoria}
+                    onChange={(e) => setNombreSubcategoria(e.target.value)}
+                    className="input-modal"
+                    autoFocus
+                  />
+                </div>
+                
+                <div className="campo-modal">
+                  <label className="label-modal">Color de la subcategoría</label>
+                  <div className="contenedor-colorpicker">
+                    <input
+                      type="color"
+                      value={colorSubcategoria}
+                      onChange={(e) => setColorSubcategoria(e.target.value.toUpperCase())}
+                      className="colorpicker-directo"
+                    />
+                    <span className="codigo-color">{colorSubcategoria}</span>
+                  </div>
+                </div>
+                
+                <div className="botones-modal">
+                  <button 
+                    type="button" 
+                    className="boton-modal-secundario"
+                    onClick={() => setMostrarFormularioSubcategoria(false)}
+                  >
+                    Cancelar
+                  </button>
+                  <button type="submit" className="boton-modal-primario">
+                    Crear Subcategoría
+                  </button>
+                </div>
+              </form>
+            </div>
+          </>
+        )}
+
         <div className="lista-categorias">
           {categorias.map((categoria) => (
             <div 
@@ -1242,13 +1373,30 @@ export default function AdminadorNotas() {
           </button>
         </div>
 
-        {categoriaVistaActual && !creandoNota && !creandoPagina && !creandoCuenta && !notaSeleccionada && !paginaWebSeleccionada && !cuentaSeleccionada && (
+        {categoriaVistaActual && !subcategoriaVistaActual && !creandoNota && !creandoPagina && !creandoCuenta && !notaSeleccionada && !paginaWebSeleccionada && !cuentaSeleccionada && (
           <div className="vista-navegacion-notas">
-            <h3 className="titulo-vista">
-              {categoriaVistaActual === 'paginas' ? 'Páginas Web' : 
-               categoriaVistaActual === 'cuentas' ? 'Cuentas' : 
-               categorias.find(c => c.id === categoriaVistaActual)?.nombre || 'Sin categoría'}
-            </h3>
+            <div className="encabezado-vista-categoria">
+              <div className="breadcrumb">
+                <span className="breadcrumb-item" onClick={() => {
+                  setCategoriaVistaActual(null);
+                  setSubcategoriaVistaActual(null);
+                }}>🏠 Inicio</span>
+                <span className="breadcrumb-separator">›</span>
+                <span className="breadcrumb-item activo">
+                  {categoriaVistaActual === 'paginas' ? 'Páginas Web' : 
+                   categoriaVistaActual === 'cuentas' ? 'Cuentas' : 
+                   categorias.find(c => c.id === categoriaVistaActual)?.nombre || 'Sin categoría'}
+                </span>
+              </div>
+              {categoriaVistaActual !== 'paginas' && categoriaVistaActual !== 'cuentas' && (
+                <button
+                  className="boton-crear-subcategoria"
+                  onClick={() => setMostrarFormularioSubcategoria(true)}
+                >
+                  + Nueva Subcategoría
+                </button>
+              )}
+            </div>
             <div className="grid-notas-vista">
               {categoriaVistaActual === 'paginas' ? (
                 paginasWeb.length > 0 ? (
@@ -1297,29 +1445,92 @@ export default function AdminadorNotas() {
                   </div>
                 )
               ) : (
-                notasPorCategoria(categoriaVistaActual).length > 0 ? (
-                  notasPorCategoria(categoriaVistaActual).map((nota) => (
+                <>
+                  {/* Mostrar subcategorías primero */}
+                  {subcategoriasPorCategoria(categoriaVistaActual).map((subcategoria) => (
                     <div
-                      key={nota.id}
-                      className="card-nota"
-                      onClick={() => {
-                        setNotaSeleccionada(nota);
-                        setPaginaWebSeleccionada(null);
-                        setCuentaSeleccionada(null);
-                      }}
+                      key={subcategoria.id}
+                      className="card-subcategoria"
+                      onClick={() => setSubcategoriaVistaActual(subcategoria.id)}
                     >
-                      <h4>{nota.titulo}</h4>
-                      <p className="preview-contenido">{nota.contenido}</p>
-                      <span className="fecha-card">{formatearFecha(nota.fechaCreacion)}</span>
+                      <div className="icono-carpeta" style={{ color: subcategoria.color }}>📁</div>
+                      <h4>{subcategoria.nombre}</h4>
+                      <p className="contador-items">{notasPorSubcategoria(subcategoria.id).length} notas</p>
                     </div>
-                  ))
-                ) : (
-                  <div className="estado-vacio">
-                    <span className="icono-vacio">📝</span>
-                    <h3>Sin Notas aún</h3>
-                    <p>Crea unas nuevas para comenzar a organizar tus ideas</p>
+                  ))}
+                  
+                  {/* Mostrar notas sin subcategoría */}
+                  {notasPorCategoria(categoriaVistaActual).filter(n => !n.subcategoriaId).length > 0 ? (
+                    notasPorCategoria(categoriaVistaActual).filter(n => !n.subcategoriaId).map((nota) => (
+                      <div
+                        key={nota.id}
+                        className="card-nota"
+                        onClick={() => {
+                          setNotaSeleccionada(nota);
+                          setPaginaWebSeleccionada(null);
+                          setCuentaSeleccionada(null);
+                        }}
+                      >
+                        <h4>{nota.titulo}</h4>
+                        <p className="preview-contenido">{nota.contenido}</p>
+                        <span className="fecha-card">{formatearFecha(nota.fechaCreacion)}</span>
+                      </div>
+                    ))
+                  ) : subcategoriasPorCategoria(categoriaVistaActual).length === 0 && (
+                    <div className="estado-vacio">
+                      <span className="icono-vacio">📝</span>
+                      <h3>Sin Notas aún</h3>
+                      <p>Crea unas nuevas para comenzar a organizar tus ideas</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Vista de Subcategoría */}
+        {subcategoriaVistaActual && !creandoNota && !notaSeleccionada && (
+          <div className="vista-navegacion-notas">
+            <div className="encabezado-vista-categoria">
+              <div className="breadcrumb">
+                <span className="breadcrumb-item" onClick={() => {
+                  setCategoriaVistaActual(null);
+                  setSubcategoriaVistaActual(null);
+                }}>🏠 Inicio</span>
+                <span className="breadcrumb-separator">›</span>
+                <span className="breadcrumb-item" onClick={() => setSubcategoriaVistaActual(null)}>
+                  {categorias.find(c => c.id === categoriaVistaActual)?.nombre || 'Categoría'}
+                </span>
+                <span className="breadcrumb-separator">›</span>
+                <span className="breadcrumb-item activo">
+                  {subcategorias.find(s => s.id === subcategoriaVistaActual)?.nombre || 'Subcategoría'}
+                </span>
+              </div>
+            </div>
+            <div className="grid-notas-vista">
+              {notasPorSubcategoria(subcategoriaVistaActual).length > 0 ? (
+                notasPorSubcategoria(subcategoriaVistaActual).map((nota) => (
+                  <div
+                    key={nota.id}
+                    className="card-nota"
+                    onClick={() => {
+                      setNotaSeleccionada(nota);
+                      setPaginaWebSeleccionada(null);
+                      setCuentaSeleccionada(null);
+                    }}
+                  >
+                    <h4>{nota.titulo}</h4>
+                    <p className="preview-contenido">{nota.contenido}</p>
+                    <span className="fecha-card">{formatearFecha(nota.fechaCreacion)}</span>
                   </div>
-                )
+                ))
+              ) : (
+                <div className="estado-vacio">
+                  <span className="icono-vacio">📝</span>
+                  <h3>Sin Notas aún</h3>
+                  <p>Crea unas nuevas en esta subcategoría</p>
+                </div>
               )}
             </div>
           </div>

@@ -230,6 +230,51 @@ export const eliminarCategoria = async (userId: string, categoriaId: string) => 
   }
 };
 
+// Funciones CRUD para Subcategorías
+export const guardarSubcategoria = async (userId: string, subcategoria: any) => {
+  try {
+    const subcategoriaRef = subcategoria.id 
+      ? ref(database, `usuarios/${userId}/subcategorias/${subcategoria.id}`)
+      : push(ref(database, `usuarios/${userId}/subcategorias`));
+    
+    await set(subcategoriaRef, {
+      nombre: subcategoria.nombre,
+      categoriaId: subcategoria.categoriaId,
+      color: subcategoria.color || '#667eea'
+    });
+    
+    return { success: true, id: subcategoria.id || subcategoriaRef.key };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const obtenerSubcategorias = async (userId: string) => {
+  try {
+    const snapshot = await get(ref(database, `usuarios/${userId}/subcategorias`));
+    if (snapshot.exists()) {
+      const subcategoriasObj = snapshot.val();
+      return Object.keys(subcategoriasObj).map(key => ({
+        ...subcategoriasObj[key],
+        id: key
+      }));
+    }
+    return [];
+  } catch (error: any) {
+    console.error('Error al obtener subcategorías:', error);
+    return [];
+  }
+};
+
+export const eliminarSubcategoria = async (userId: string, subcategoriaId: string) => {
+  try {
+    await remove(ref(database, `usuarios/${userId}/subcategorias/${subcategoriaId}`));
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
+
 export const eliminarTodasLasNotas = async (userId: string) => {
   try {
     await remove(ref(database, `usuarios/${userId}/notas`));

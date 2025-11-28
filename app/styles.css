@@ -1569,6 +1569,113 @@ html {
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
+/* Subcategorías */
+.card-subcategoria {
+  background-color: var(--color-fondo-secundario);
+  border: 2px dashed var(--color-borde);
+  border-radius: 12px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.3s;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.card-subcategoria:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.15);
+  border-color: #667eea;
+  border-style: solid;
+}
+
+.icono-carpeta {
+  font-size: 48px;
+  opacity: 0.9;
+}
+
+.card-subcategoria h4 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--color-texto);
+  margin: 0;
+}
+
+.contador-items {
+  font-size: 13px;
+  color: var(--color-texto-secundario);
+  margin: 0;
+}
+
+.boton-crear-subcategoria {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.boton-crear-subcategoria:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Breadcrumb */
+.encabezado-vista-categoria {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--color-borde);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.breadcrumb-item {
+  font-size: 15px;
+  color: var(--color-texto-secundario);
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.breadcrumb-item:hover {
+  color: #667eea;
+  background-color: rgba(102, 126, 234, 0.1);
+}
+
+.breadcrumb-item.activo {
+  color: var(--color-texto);
+  font-weight: 600;
+  cursor: default;
+}
+
+.breadcrumb-item.activo:hover {
+  background-color: transparent;
+}
+
+.breadcrumb-separator {
+  color: var(--color-texto-secundario);
+  font-size: 14px;
+  user-select: none;
+}
+
 .visor-nota {
   padding: 30px;
   overflow-y: auto;
