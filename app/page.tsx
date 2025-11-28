@@ -101,6 +101,7 @@ export default function AdminadorNotas() {
   const [tituloOriginal, setTituloOriginal] = useState('');
   const [contenidoOriginal, setContenidoOriginal] = useState('');
   const [categoriaOriginal, setCategoriaOriginal] = useState('');
+  const [subcategoriaOriginal, setSubcategoriaOriginal] = useState('');
   const [hayChanges, setHayChanges] = useState(false);
   
   const [nombreSitioEditable, setNombreSitioEditable] = useState('');
@@ -295,9 +296,11 @@ export default function AdminadorNotas() {
       setTituloEditable(notaSeleccionada.titulo);
       setContenidoEditable(notaSeleccionada.contenido);
       setCategoriaEditable(notaSeleccionada.categoriaId);
+      setSubcategoriaEditable(notaSeleccionada.subcategoriaId || '');
       setTituloOriginal(notaSeleccionada.titulo);
       setContenidoOriginal(notaSeleccionada.contenido);
       setCategoriaOriginal(notaSeleccionada.categoriaId);
+      setSubcategoriaOriginal(notaSeleccionada.subcategoriaId || '');
       setHayChanges(false);
       setCreandoNota(false);
     }
@@ -333,9 +336,10 @@ export default function AdminadorNotas() {
     if (creandoNota) return;
     const cambios = tituloEditable !== tituloOriginal || 
                     contenidoEditable !== contenidoOriginal || 
-                    categoriaEditable !== categoriaOriginal;
+                    categoriaEditable !== categoriaOriginal ||
+                    subcategoriaEditable !== subcategoriaOriginal;
     setHayChanges(cambios);
-  }, [tituloEditable, contenidoEditable, categoriaEditable, tituloOriginal, contenidoOriginal, categoriaOriginal, creandoNota]);
+  }, [tituloEditable, contenidoEditable, categoriaEditable, subcategoriaEditable, tituloOriginal, contenidoOriginal, categoriaOriginal, subcategoriaOriginal, creandoNota]);
 
   useEffect(() => {
     if (creandoPagina) return;
@@ -468,6 +472,7 @@ export default function AdminadorNotas() {
       setTituloOriginal(tituloEditable);
       setContenidoOriginal(contenidoEditable);
       setCategoriaOriginal(categoriaEditable);
+      setSubcategoriaOriginal(subcategoriaEditable);
       setHayChanges(false);
     }
   };
@@ -476,6 +481,7 @@ export default function AdminadorNotas() {
     setTituloEditable(tituloOriginal);
     setContenidoEditable(contenidoOriginal);
     setCategoriaEditable(categoriaOriginal);
+    setSubcategoriaEditable(subcategoriaOriginal);
     setHayChanges(false);
   };
 
@@ -725,10 +731,12 @@ export default function AdminadorNotas() {
       ? categoriaVistaActual 
       : categorias[0]?.id || '';
     setCategoriaEditable(categoriaInicial);
+    // Solo preseleccionar subcategoría si estamos viendo una subcategoría específica
     setSubcategoriaEditable(subcategoriaVistaActual || '');
     setTituloOriginal('');
     setContenidoOriginal('');
     setCategoriaOriginal('');
+    setSubcategoriaOriginal('');
     setHayChanges(true);
   };
 
@@ -1565,7 +1573,10 @@ export default function AdminadorNotas() {
                 <div className="meta-datos">
                   <select
                     value={categoriaEditable}
-                    onChange={(e) => setCategoriaEditable(e.target.value)}
+                    onChange={(e) => {
+                      setCategoriaEditable(e.target.value);
+                      setSubcategoriaEditable(''); // Limpiar subcategoría al cambiar de categoría
+                    }}
                     className="categoria-editable"
                     style={{
                       backgroundColor: categorias.find(c => c.id === categoriaEditable)?.color,
@@ -1578,6 +1589,29 @@ export default function AdminadorNotas() {
                       </option>
                     ))}
                   </select>
+                  {subcategoriasPorCategoria(categoriaEditable).length > 0 && (
+                    <>
+                      <span className="separador">•</span>
+                      <select
+                        value={subcategoriaEditable}
+                        onChange={(e) => setSubcategoriaEditable(e.target.value)}
+                        className="categoria-editable"
+                        style={{
+                          backgroundColor: subcategoriaEditable 
+                            ? subcategorias.find(s => s.id === subcategoriaEditable)?.color 
+                            : '#999',
+                          color: '#fff',
+                        }}
+                      >
+                        <option value="">Sin subcategoría</option>
+                        {subcategoriasPorCategoria(categoriaEditable).map((sub) => (
+                          <option key={sub.id} value={sub.id}>
+                            {sub.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
                   <span className="separador">•</span>
                   <span className="fecha-visor">Creando nueva nota</span>
                 </div>
@@ -1623,7 +1657,10 @@ export default function AdminadorNotas() {
                 <div className="meta-datos">
                   <select
                     value={categoriaEditable}
-                    onChange={(e) => setCategoriaEditable(e.target.value)}
+                    onChange={(e) => {
+                      setCategoriaEditable(e.target.value);
+                      setSubcategoriaEditable(''); // Limpiar subcategoría al cambiar de categoría
+                    }}
                     className="categoria-editable"
                     style={{
                       backgroundColor: categorias.find(c => c.id === categoriaEditable)?.color,
@@ -1636,6 +1673,29 @@ export default function AdminadorNotas() {
                       </option>
                     ))}
                   </select>
+                  {subcategoriasPorCategoria(categoriaEditable).length > 0 && (
+                    <>
+                      <span className="separador">•</span>
+                      <select
+                        value={subcategoriaEditable}
+                        onChange={(e) => setSubcategoriaEditable(e.target.value)}
+                        className="categoria-editable"
+                        style={{
+                          backgroundColor: subcategoriaEditable 
+                            ? subcategorias.find(s => s.id === subcategoriaEditable)?.color 
+                            : '#999',
+                          color: '#fff',
+                        }}
+                      >
+                        <option value="">Sin subcategoría</option>
+                        {subcategoriasPorCategoria(categoriaEditable).map((sub) => (
+                          <option key={sub.id} value={sub.id}>
+                            {sub.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
                   <span className="separador">•</span>
                   <span className="fecha-visor">
                     {formatearFecha(notaSeleccionada.fechaCreacion)}
