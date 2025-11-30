@@ -584,7 +584,7 @@ export default function AdminadorNotas() {
       const paginaConId = { ...nuevaPaginaWeb, id: resultado.id || nuevaPaginaWeb.id };
       setPaginasWeb([...paginasWeb, paginaConId]);
       setCreandoPagina(false);
-      setPaginaWebSeleccionada(paginaConId);
+      // No seleccionar la página, mantener en la vista de categoría
       setNombreSitioEditable('');
       setEnlacePaginaEditable('');
       setDescripcionPaginaEditable('');
@@ -644,7 +644,7 @@ export default function AdminadorNotas() {
       const cuentaConId = { ...nuevaCuenta, id: resultado.id || nuevaCuenta.id };
       setCuentas([...cuentas, cuentaConId]);
       setCreandoCuenta(false);
-      setCuentaSeleccionada(cuentaConId);
+      // No seleccionar la cuenta, mantener en la vista de categoría
       setNombreCuentaEditable('');
       setUsuarioCuentaEditable('');
       setContraseñaCuentaEditable('');
@@ -1311,19 +1311,6 @@ export default function AdminadorNotas() {
                   />
                 </div>
                 
-                <div className="campo-modal">
-                  <label className="label-modal">Color de la subcategoría</label>
-                  <div className="contenedor-colorpicker">
-                    <input
-                      type="color"
-                      value={colorSubcategoria}
-                      onChange={(e) => setColorSubcategoria(e.target.value.toUpperCase())}
-                      className="colorpicker-directo"
-                    />
-                    <span className="codigo-color">{colorSubcategoria}</span>
-                  </div>
-                </div>
-                
                 <div className="botones-modal">
                   <button 
                     type="button" 
@@ -1949,7 +1936,7 @@ export default function AdminadorNotas() {
         )}
 
         {/* Vista de Subcategoría */}
-        {subcategoriaVistaActual && !creandoNota && !notaSeleccionada && (
+        {subcategoriaVistaActual && !creandoNota && !creandoPagina && !creandoCuenta && !notaSeleccionada && !paginaWebSeleccionada && !cuentaSeleccionada && (
           <div className="vista-navegacion-notas">
             <div className="encabezado-vista-categoria">
               <div className="breadcrumb">
