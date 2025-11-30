@@ -41,6 +41,7 @@ interface PaginaWeb {
   nombreSitio: string;
   enlace: string;
   descripcion: string;
+  subcategoriaId?: string;
   fechaCreacion: Date;
 }
 
@@ -49,6 +50,7 @@ interface Cuenta {
   nombreCuenta: string;
   usuario: string;
   contraseña: string;
+  subcategoriaId?: string;
   fechaCreacion: Date;
 }
 
@@ -564,13 +566,18 @@ export default function AdminadorNotas() {
   const crearPaginaWeb = async () => {
     if (!usuario || !nombreSitioEditable.trim() || !enlacePaginaEditable.trim()) return;
     
-    const nuevaPaginaWeb: PaginaWeb = {
+    const nuevaPaginaWeb: any = {
       id: Date.now().toString(),
       nombreSitio: nombreSitioEditable,
       enlace: enlacePaginaEditable,
       descripcion: descripcionPaginaEditable,
       fechaCreacion: new Date().toISOString(),
     };
+    
+    // Solo agregar subcategoriaId si tiene un valor válido
+    if (subcategoriaEditable && subcategoriaEditable.trim() !== '') {
+      nuevaPaginaWeb.subcategoriaId = subcategoriaEditable;
+    }
     
     const resultado = await guardarPaginaWeb(usuario.uid, nuevaPaginaWeb);
     if (resultado.success) {
@@ -619,13 +626,18 @@ export default function AdminadorNotas() {
   const crearCuenta = async () => {
     if (!usuario || !nombreCuentaEditable.trim() || !usuarioCuentaEditable.trim()) return;
     
-    const nuevaCuenta: Cuenta = {
+    const nuevaCuenta: any = {
       id: Date.now().toString(),
       nombreCuenta: nombreCuentaEditable,
       usuario: usuarioCuentaEditable,
       contraseña: contraseñaCuentaEditable,
       fechaCreacion: new Date().toISOString(),
     };
+    
+    // Solo agregar subcategoriaId si tiene un valor válido
+    if (subcategoriaEditable && subcategoriaEditable.trim() !== '') {
+      nuevaCuenta.subcategoriaId = subcategoriaEditable;
+    }
     
     const resultado = await guardarCuenta(usuario.uid, nuevaCuenta);
     if (resultado.success) {
@@ -753,6 +765,14 @@ export default function AdminadorNotas() {
 
   const notasPorSubcategoria = (subcategoriaId: string) => {
     return notas.filter((n) => n.subcategoriaId === subcategoriaId);
+  };
+
+  const paginasWebPorSubcategoria = (subcategoriaId: string) => {
+    return paginasWeb.filter((p) => p.subcategoriaId === subcategoriaId);
+  };
+
+  const cuentasPorSubcategoria = (subcategoriaId: string) => {
+    return cuentas.filter((c) => c.subcategoriaId === subcategoriaId);
   };
 
   const subcategoriasPorCategoria = (categoriaId: string) => {
@@ -972,6 +992,7 @@ export default function AdminadorNotas() {
     setNombreSitioOriginal('');
     setEnlacePaginaOriginal('');
     setDescripcionPaginaOriginal('');
+    setSubcategoriaEditable(subcategoriaVistaActual || '');
     setHayChangesPagina(true);
   };
 
@@ -996,6 +1017,7 @@ export default function AdminadorNotas() {
     setNombreCuentaOriginal('');
     setUsuarioCuentaOriginal('');
     setContraseñaCuentaOriginal('');
+    setSubcategoriaEditable(subcategoriaVistaActual || '');
     setHayChangesCuenta(true);
   };
 
@@ -1708,12 +1730,51 @@ export default function AdminadorNotas() {
 
       <main className="area-principal">
         <div className="encabezado-principal">
-          <h2>Editor de Notas</h2>
+          <h2>
+            {(() => {
+              if (subcategoriaVistaActual) {
+                const subcategoria = subcategorias.find(s => s.id === subcategoriaVistaActual);
+                if (subcategoria?.categoriaId === 'paginas') return 'Páginas Web';
+                if (subcategoria?.categoriaId === 'cuentas') return 'Cuentas';
+                return 'Editor de Notas';
+              }
+              return categoriaVistaActual === 'paginas' ? 'Páginas Web' : 
+                     categoriaVistaActual === 'cuentas' ? 'Cuentas' : 
+                     'Editor de Notas';
+            })()}
+          </h2>
           <button
             className="boton-crear-nota"
-            onClick={iniciarCreacionNota}
+            onClick={() => {
+              if (subcategoriaVistaActual) {
+                const subcategoria = subcategorias.find(s => s.id === subcategoriaVistaActual);
+                if (subcategoria?.categoriaId === 'paginas') {
+                  iniciarCreacionPaginaWeb();
+                } else if (subcategoria?.categoriaId === 'cuentas') {
+                  iniciarCreacionCuenta();
+                } else {
+                  iniciarCreacionNota();
+                }
+              } else if (categoriaVistaActual === 'paginas') {
+                iniciarCreacionPaginaWeb();
+              } else if (categoriaVistaActual === 'cuentas') {
+                iniciarCreacionCuenta();
+              } else {
+                iniciarCreacionNota();
+              }
+            }}
           >
-            + Nueva Nota
+            {(() => {
+              if (subcategoriaVistaActual) {
+                const subcategoria = subcategorias.find(s => s.id === subcategoriaVistaActual);
+                if (subcategoria?.categoriaId === 'paginas') return '+ Nueva Página Web';
+                if (subcategoria?.categoriaId === 'cuentas') return '+ Nueva Cuenta';
+                return '+ Nueva Nota';
+              }
+              return categoriaVistaActual === 'paginas' ? '+ Nueva Página Web' : 
+                     categoriaVistaActual === 'cuentas' ? '+ Nueva Cuenta' : 
+                     '+ Nueva Nota';
+            })()}
           </button>
         </div>
 
@@ -1732,62 +1793,108 @@ export default function AdminadorNotas() {
                    categorias.find(c => c.id === categoriaVistaActual)?.nombre || 'Sin categoría'}
                 </span>
               </div>
-              {categoriaVistaActual !== 'paginas' && categoriaVistaActual !== 'cuentas' && (
-                <button
-                  className="boton-crear-subcategoria"
-                  onClick={() => setMostrarFormularioSubcategoria(true)}
-                >
-                  + Nueva Subcategoría
-                </button>
-              )}
+              <button
+                className="boton-crear-subcategoria"
+                onClick={() => setMostrarFormularioSubcategoria(true)}
+              >
+                + Nueva Subcategoría
+              </button>
             </div>
             <div className="grid-notas-vista">
               {categoriaVistaActual === 'paginas' ? (
-                paginasWeb.length > 0 ? (
-                  paginasWeb.map((pagina) => (
+                <>
+                  {/* Mostrar subcategorías primero */}
+                  {subcategoriasPorCategoria('paginas').map((subcategoria) => (
                     <div
-                      key={pagina.id}
-                      className="card-nota"
-                      onClick={() => {
-                        setPaginaWebSeleccionada(pagina);
-                        setNotaSeleccionada(null);
-                        setCuentaSeleccionada(null);
-                      }}
+                      key={subcategoria.id}
+                      className="card-subcategoria"
+                      onClick={() => setSubcategoriaVistaActual(subcategoria.id)}
+                      onContextMenu={(e) => handleContextMenuSubcategoria(e, subcategoria)}
+                      onDragOver={handleDragOver}
+                      onDragEnter={(e) => handleDragEnter(e, subcategoria.id)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDropEnSubcategoria(e, subcategoria.id)}
                     >
-                      <h4>{pagina.nombreSitio}</h4>
-                      <p className="preview-contenido">{pagina.enlace}</p>
+                      <div className="icono-carpeta" style={{ color: subcategoria.color }}>📁</div>
+                      <h4>{subcategoria.nombre}</h4>
+                      <p className="contador-items">{paginasWebPorSubcategoria(subcategoria.id).length} páginas</p>
                     </div>
-                  ))
-                ) : (
-                  <div className="estado-vacio">
-                    <span className="icono-vacio">🌐</span>
-                    <h3>Sin Páginas Web aún</h3>
-                    <p>Crea nuevas páginas web para organizarlas</p>
-                  </div>
-                )
+                  ))}
+                  
+                  {/* Mostrar páginas web sin subcategoría */}
+                  {paginasWeb.filter(p => !p.subcategoriaId).length > 0 ? (
+                    paginasWeb.filter(p => !p.subcategoriaId).map((pagina) => (
+                      <div
+                        key={pagina.id}
+                        className="card-nota"
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, pagina.id)}
+                        onDragEnd={handleDragEnd}
+                        onClick={() => {
+                          setPaginaWebSeleccionada(pagina);
+                          setNotaSeleccionada(null);
+                          setCuentaSeleccionada(null);
+                        }}
+                      >
+                        <h4>{pagina.nombreSitio}</h4>
+                        <p className="preview-contenido">{pagina.enlace}</p>
+                      </div>
+                    ))
+                  ) : subcategoriasPorCategoria('paginas').length === 0 && (
+                    <div className="estado-vacio">
+                      <span className="icono-vacio">🌐</span>
+                      <h3>Sin Páginas Web aún</h3>
+                      <p>Crea nuevas páginas web para organizarlas</p>
+                    </div>
+                  )}
+                </>
               ) : categoriaVistaActual === 'cuentas' ? (
-                cuentas.length > 0 ? (
-                  cuentas.map((cuenta) => (
+                <>
+                  {/* Mostrar subcategorías primero */}
+                  {subcategoriasPorCategoria('cuentas').map((subcategoria) => (
                     <div
-                      key={cuenta.id}
-                      className="card-nota"
-                      onClick={() => {
-                        setCuentaSeleccionada(cuenta);
-                        setNotaSeleccionada(null);
-                        setPaginaWebSeleccionada(null);
-                      }}
+                      key={subcategoria.id}
+                      className="card-subcategoria"
+                      onClick={() => setSubcategoriaVistaActual(subcategoria.id)}
+                      onContextMenu={(e) => handleContextMenuSubcategoria(e, subcategoria)}
+                      onDragOver={handleDragOver}
+                      onDragEnter={(e) => handleDragEnter(e, subcategoria.id)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDropEnSubcategoria(e, subcategoria.id)}
                     >
-                      <h4>{cuenta.nombreCuenta}</h4>
-                      <p className="preview-contenido">{cuenta.usuario}</p>
+                      <div className="icono-carpeta" style={{ color: subcategoria.color }}>📁</div>
+                      <h4>{subcategoria.nombre}</h4>
+                      <p className="contador-items">{cuentasPorSubcategoria(subcategoria.id).length} cuentas</p>
                     </div>
-                  ))
-                ) : (
-                  <div className="estado-vacio">
-                    <span className="icono-vacio">🔐</span>
-                    <h3>Sin Cuentas aún</h3>
-                    <p>Crea nuevas cuentas para gestionarlas de forma segura</p>
-                  </div>
-                )
+                  ))}
+                  
+                  {/* Mostrar cuentas sin subcategoría */}
+                  {cuentas.filter(c => !c.subcategoriaId).length > 0 ? (
+                    cuentas.filter(c => !c.subcategoriaId).map((cuenta) => (
+                      <div
+                        key={cuenta.id}
+                        className="card-nota"
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, cuenta.id)}
+                        onDragEnd={handleDragEnd}
+                        onClick={() => {
+                          setCuentaSeleccionada(cuenta);
+                          setNotaSeleccionada(null);
+                          setPaginaWebSeleccionada(null);
+                        }}
+                      >
+                        <h4>{cuenta.nombreCuenta}</h4>
+                        <p className="preview-contenido">{cuenta.usuario}</p>
+                      </div>
+                    ))
+                  ) : subcategoriasPorCategoria('cuentas').length === 0 && (
+                    <div className="estado-vacio">
+                      <span className="icono-vacio">🔐</span>
+                      <h3>Sin Cuentas aún</h3>
+                      <p>Crea nuevas cuentas para gestionarlas de forma segura</p>
+                    </div>
+                  )}
+                </>
               ) : (
                 <>
                   {/* Mostrar subcategorías primero */}
@@ -1873,32 +1980,91 @@ export default function AdminadorNotas() {
               </div>
             </div>
             <div className="grid-notas-vista">
-              {notasPorSubcategoria(subcategoriaVistaActual).length > 0 ? (
-                notasPorSubcategoria(subcategoriaVistaActual).map((nota) => (
-                  <div
-                    key={nota.id}
-                    className="card-nota"
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, nota.id)}
-                    onDragEnd={handleDragEnd}
-                    onClick={() => {
-                      setNotaSeleccionada(nota);
-                      setPaginaWebSeleccionada(null);
-                      setCuentaSeleccionada(null);
-                    }}
-                  >
-                    <h4>{nota.titulo}</h4>
-                    <p className="preview-contenido">{nota.contenido}</p>
-                    <span className="fecha-card">{formatearFecha(nota.fechaCreacion)}</span>
-                  </div>
-                ))
-              ) : (
-                <div className="estado-vacio">
-                  <span className="icono-vacio">📝</span>
-                  <h3>Sin Notas aún</h3>
-                  <p>Crea unas nuevas en esta subcategoría</p>
-                </div>
-              )}
+              {(() => {
+                const subcategoriaActual = subcategorias.find(s => s.id === subcategoriaVistaActual);
+                if (!subcategoriaActual) return null;
+
+                if (subcategoriaActual.categoriaId === 'paginas') {
+                  return paginasWebPorSubcategoria(subcategoriaVistaActual).length > 0 ? (
+                    paginasWebPorSubcategoria(subcategoriaVistaActual).map((pagina) => (
+                      <div
+                        key={pagina.id}
+                        className="card-nota"
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, pagina.id)}
+                        onDragEnd={handleDragEnd}
+                        onClick={() => {
+                          setPaginaWebSeleccionada(pagina);
+                          setNotaSeleccionada(null);
+                          setCuentaSeleccionada(null);
+                        }}
+                      >
+                        <h4>{pagina.nombreSitio}</h4>
+                        <p className="preview-contenido">{pagina.enlace}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="estado-vacio">
+                      <span className="icono-vacio">🌐</span>
+                      <h3>Sin Páginas Web aún</h3>
+                      <p>Crea nuevas páginas en esta subcategoría</p>
+                    </div>
+                  );
+                } else if (subcategoriaActual.categoriaId === 'cuentas') {
+                  return cuentasPorSubcategoria(subcategoriaVistaActual).length > 0 ? (
+                    cuentasPorSubcategoria(subcategoriaVistaActual).map((cuenta) => (
+                      <div
+                        key={cuenta.id}
+                        className="card-nota"
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, cuenta.id)}
+                        onDragEnd={handleDragEnd}
+                        onClick={() => {
+                          setCuentaSeleccionada(cuenta);
+                          setNotaSeleccionada(null);
+                          setPaginaWebSeleccionada(null);
+                        }}
+                      >
+                        <h4>{cuenta.nombreCuenta}</h4>
+                        <p className="preview-contenido">{cuenta.usuario}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="estado-vacio">
+                      <span className="icono-vacio">🔐</span>
+                      <h3>Sin Cuentas aún</h3>
+                      <p>Crea nuevas cuentas en esta subcategoría</p>
+                    </div>
+                  );
+                } else {
+                  return notasPorSubcategoria(subcategoriaVistaActual).length > 0 ? (
+                    notasPorSubcategoria(subcategoriaVistaActual).map((nota) => (
+                      <div
+                        key={nota.id}
+                        className="card-nota"
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, nota.id)}
+                        onDragEnd={handleDragEnd}
+                        onClick={() => {
+                          setNotaSeleccionada(nota);
+                          setPaginaWebSeleccionada(null);
+                          setCuentaSeleccionada(null);
+                        }}
+                      >
+                        <h4>{nota.titulo}</h4>
+                        <p className="preview-contenido">{nota.contenido}</p>
+                        <span className="fecha-card">{formatearFecha(nota.fechaCreacion)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="estado-vacio">
+                      <span className="icono-vacio">📝</span>
+                      <h3>Sin Notas aún</h3>
+                      <p>Crea unas nuevas en esta subcategoría</p>
+                    </div>
+                  );
+                }
+              })()}
             </div>
           </div>
         )}
